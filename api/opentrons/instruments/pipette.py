@@ -1,5 +1,5 @@
-import copy
 import itertools
+import os
 
 from opentrons.containers import unpack_location
 from opentrons.containers.calibrator import Calibrator
@@ -117,42 +117,37 @@ class Pipette(Instrument):
         self.min_volume = min_volume
         self.max_volume = max_volume or (min_volume + 1)
 
-        # NOTE: positions set to none in order to determine calibration state?
-        # self.positions = {
-        #     'top': None,
-        #     'bottom': None,
-        #     'blow_out': None,
-        #     'drop_tip': None
-        # }
-
         # FIXME
-        default_positions = {
-            'top': 0,
-            'bottom': 10,
-            'blow_out': 12,
-            'drop_tip': 14
-        }
-        self.positions = {}
-        self.positions.update(default_positions)
+        # default_positions = {
+        #     'top': 0,
+        #     'bottom': 10,
+        #     'blow_out': 12,
+        #     'drop_tip': 14
+        # }
+        # self.positions = {}
+        # self.positions.update(default_positions)
+        #
+        # self.calibrated_positions = copy.deepcopy(default_positions)
+        #
+        # self.calibration_data = {}
+        #
+        # # Pipette properties to persist between sessions
+        # persisted_attributes = ['calibration_data', 'positions', 'max_volume']
+        # persisted_key = '{axis}:{name}'.format(
+        #     axis=self.axis,
+        #     name=self.name)
+        #
+        # self.init_calibrations(
+        #     key=persisted_key,
+        #     attributes=persisted_attributes)
+        # self.load_persisted_data()
+        #
+        # for key, val in self.positions.items():
+        #     if val is None:
+        #         self.positions[key] = default_positions[key]
 
-        self.calibrated_positions = copy.deepcopy(default_positions)
-
-        self.calibration_data = {}
-
-        # Pipette properties to persist between sessions
-        persisted_attributes = ['calibration_data', 'positions', 'max_volume']
-        persisted_key = '{axis}:{name}'.format(
-            axis=self.axis,
-            name=self.name)
-
-        self.init_calibrations(
-            key=persisted_key,
-            attributes=persisted_attributes)
-        self.load_persisted_data()
-
-        for key, val in self.positions.items():
-            if val is None:
-                self.positions[key] = default_positions[key]
+        cfm = os.environ.get('CalibrationFileManager')
+        cfm.get(self.name)
 
         self.calibrator = Calibrator(self.robot._deck, self.calibration_data)
 
