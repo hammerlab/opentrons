@@ -1,13 +1,4 @@
-import json
 import sys
-import traceback
-
-
-JSON_ERROR = None
-if sys.version_info > (3, 4):
-    JSON_ERROR = ValueError
-else:
-    JSON_ERROR = json.decoder.JSONDecodeError
 
 
 def get_frozen_root():
@@ -47,3 +38,4 @@ def timestamp(seconds: int) -> str:
     minutes, seconds = divmod(seconds, 60)
     hours, minutes = divmod(minutes, 60)
     return "%d:%02d:%02d" % (hours, minutes, seconds)
+

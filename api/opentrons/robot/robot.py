@@ -8,7 +8,7 @@ from opentrons.util import trace
 from opentrons.util.vector import Vector
 from opentrons.util.log import get_logger
 from opentrons.helpers import helpers
-from opentrons.util.trace import MessageBroker
+from opentrons.util.trace import MessageBroker, traceable
 from opentrons.trackers import position_tracker
 import opentrons.util.calibration_functions as calib
 import opentrons.util.position_functions as pf
@@ -384,16 +384,6 @@ class Robot(object):
             self._driver.home('x', 'y', 'b', 'a')
 
     def add_command(self, command):
-        if self.mode == 'live':
-            cmd_run_event = {'caller': 'ui'}
-            cmd_run_event['mode'] = 'live'
-            cmd_run_event['name'] = 'command-run'
-            cmd_run_event.update({
-                'command_description': command,
-                'command_index': len(self._commands),
-                'commands_total': self.cmds_total
-            })
-            trace.MessageBroker.get_instance().publish('system-action', cmd_run_event)
         self._commands.append(command)
 
     @helpers.not_app_run_safe
@@ -426,7 +416,7 @@ class Robot(object):
         """
         self._driver.set_speed(*args, **kwargs)
 
-    @MessageBroker.traceable('instrument_action', 'move-to')
+    @traceable('move-to')
     def move_to(self, location, instrument=HEAD, strategy='arc', **kwargs):
         """
         Move an instrument to a coordinate, container or a coordinate within

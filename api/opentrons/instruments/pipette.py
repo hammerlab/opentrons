@@ -337,8 +337,7 @@ class Pipette(Instrument):
         _description = "Aspirating {0} {1}".format(
             volume,
             ('at ' + humanize_location(location) if location else '')
-        )  # NOQA
-        self.robot.add_command(_description)
+        )
 
         self._position_for_aspirate(location)
         self.motor.speed(speed)
@@ -431,6 +430,12 @@ class Pipette(Instrument):
         self.motor.speed(speed)
         self.motor.move(destination)
         self.current_volume -= volume  # update after actual dispense
+
+        _description = "Dispensing {0} {1}".format(
+            volume,
+            ('at ' + humanize_location(location) if location else '')
+        )
+        self.robot.add_command(_description)
         return self
 
     def _position_for_aspirate(self, location=None):
@@ -794,6 +799,12 @@ class Pipette(Instrument):
         for i in range(int(presses) - 1):
             self.robot.move_head(z=tip_plunge, mode='relative')
             self.robot.move_head(z=-tip_plunge, mode='relative')
+
+        _description = "Picking up tip {0}".format(
+            ('from ' + humanize_location(location) if location else '')
+        )
+
+        self.robot.add_command(_description)
         return self
 
     def drop_tip(self, location=None, home_after=True):
@@ -886,7 +897,8 @@ class Pipette(Instrument):
 
         _description = "Homing pipette plunger on axis {}".format(
             self.axis
-        )  # NOQA
+        )
+
         self.robot.add_command(_description)
 
         self.current_volume = 0
@@ -1070,10 +1082,9 @@ class Pipette(Instrument):
         seconds %= 60
 
         _description = "Delaying {} minutes and {} seconds".format(
-            minutes, seconds)  # NOQA
-        self.robot.add_command(_description)
-
+            minutes, seconds)
         seconds += float(minutes * 60)
+
         self.motor.wait(seconds)
         return self
 
