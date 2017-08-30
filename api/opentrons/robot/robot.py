@@ -473,15 +473,6 @@ class Robot(object):
 
         coordinates = pf.target_pos_for_instrument_positioning(self.position_tracker, HEAD, instrument, *target)
 
-        # if instrument:
-        #     coordinates = instrument.calibrator.convert(
-        #         placeable,
-        #         coordinates)
-        # # else:
-        #     coordinates += placeable.coordinates(placeable.get_deck())
-
-
-
         if strategy == 'arc':
             arc_coords = self._create_arc(coordinates, placeable)
             for coord in arc_coords:
@@ -687,14 +678,7 @@ class Robot(object):
         container = containers.get_persisted_container(container_name)
         container.properties['type'] = container_name
         self._deck[slot].add(container, label)
-
         self.add_container_to_position_tracker(container)
-
-        # if a container is added to Deck AFTER a Pipette, the Pipette's
-        # Calibrator must update to include all children of Deck
-        for _, instr in self.get_instruments():
-            if hasattr(instr, 'update_calibrator'):
-                instr.update_calibrator()
         return container
 
     def add_container_to_position_tracker(self, container : Container):
