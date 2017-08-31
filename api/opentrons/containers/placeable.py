@@ -213,7 +213,7 @@ class Placeable(object):
         coordinates = [i._coordinates for i in self.get_trace(reference)]
         return functools.reduce(lambda a, b: a + b, coordinates)
 
-    def add(self, child, name=None, coordinates=Vector(0, 0, 0)):
+    def add(self, child, name=None, coordinates=None):
         """
         Adds child to the :Placeable:, storing it's :name: and :coordinates:
 
@@ -226,13 +226,11 @@ class Placeable(object):
         if name in self.children_by_name:
             del self.children_by_name[name]
 
-        child._coordinates = Vector(coordinates)
+        if coordinates:
+            child._coordinates = Vector(coordinates)
         child.parent = self
         self.children_by_name[name] = child
         self.children_by_reference[child] = name
-
-        # position_tracker.track_object(
-        #     child, *child.coordinates()) #temporary placement
 
     def get_deck(self):
         """
