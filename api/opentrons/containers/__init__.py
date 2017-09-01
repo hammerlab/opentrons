@@ -25,7 +25,6 @@ __all__ = [
     unpack_location,
     apply_calibration]
 
-
 def load(robot, container_name, slot, label=None):
     """
     Examples
@@ -40,10 +39,8 @@ def load(robot, container_name, slot, label=None):
     """
     return robot.add_container(container_name, slot, label)
 
-
 def list():
     return container_file_loading.list_container_names()
-
 
 def create(name, grid, spacing, diameter, depth, volume=0):
     columns, rows = grid
@@ -89,7 +86,6 @@ def container_to_json(c, name):
 
         ))
     return {name: {'origin-offset': container_offset,'locations': OrderedDict(locations)}}
-
 
 def save_custom_container(data):
     container_file_path = environment.get_path('CONTAINERS_FILE')
