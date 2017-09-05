@@ -666,10 +666,8 @@ class Robot(object):
         if not label:
             label = container_name
         container = containers.get_persisted_container(container_name)
-        print("COORD: ", container._coordinates)
         container.properties['type'] = container_name
         self._deck[slot].add(container, label)
-        print("COORD: ", container._coordinates)
         self.add_container_to_position_tracker(container)
         return container
 
@@ -799,7 +797,7 @@ class Robot(object):
     def comment(self, msg):
         self.add_command(msg)
 
-    def calibrate_container_with_instrument(self, container, instrument, save=False):
+    def calibrate_container_with_instrument(self, container: Container, instrument, save: bool):
         tracked_position = self.position_tracker[container[0]].position
         true_position    = self.position_tracker[instrument].position
         calib.calibrate_container_with_delta(container,
