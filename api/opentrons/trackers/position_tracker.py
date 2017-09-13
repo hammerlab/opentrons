@@ -65,6 +65,7 @@ class Pose(object):
 
 class PositionTracker(object):
     def __init__(self, broker: MessageBroker):
+        print()
         self._position_dict = {}
         broker.subscribe(MOVEMENT, self._object_moved)
 
@@ -95,6 +96,7 @@ class PositionTracker(object):
         return subtree_dict
 
     def max_z_in_subtree(self, root):
+        print('position_tracker_max_z_in_subtree SELF: ', id(self))
         return max([pose.z for pose, _ in self.get_subtree(root).values()])
 
     def track_object(self, parent, obj, x, y, z):
@@ -164,4 +166,3 @@ class PositionTracker(object):
         tx, ty, tz = self[target_object].position
         rx, ry, rz = self[reference_object].position
         return (tx - rx, ty - ry, tz - rz)
-

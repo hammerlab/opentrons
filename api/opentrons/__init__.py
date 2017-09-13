@@ -14,6 +14,8 @@ if version < (3, 5):
 
 
 robot = Robot()
+print("\n\nOpentrons init")
+print(id(robot))
 
 
 def reset():

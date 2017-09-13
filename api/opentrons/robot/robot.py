@@ -147,6 +147,7 @@ class Robot(object):
     """
 
     def __init__(self):
+        print("\nNEW ROBOT")
         """
         Initializes a robot instance.
 
@@ -809,4 +810,5 @@ class Robot(object):
                                              *(true_position - expected_position), save)
 
     def max_deck_height(self):
+        print('robot_class: ',id(self._deck))
         return self.position_tracker.max_z_in_subtree(self._deck)
