@@ -2,9 +2,11 @@
 # import logging
 # from logging.config import dictConfig
 
+import asyncio
 import pytest
 import os
 import re
+import functools
 
 from collections import namedtuple
 from opentrons.server import rpc
@@ -64,13 +66,12 @@ def protocol(request):
 @pytest.fixture
 def session_manager(loop):
     from opentrons.session import SessionManager
-    with SessionManager(loop=loop) as s:
-        yield s
-    return
+    with SessionManager(loop=loop) as manager:
+        yield manager
 
 
 @pytest.fixture
-def session(loop, test_client, request, session_manager):
+def session(test_client, request, session_manager, loop):
     """
     Create testing session. Tests using this fixture are expected
     to have @pytest.mark.parametrize('root', [value]) decorator set.
@@ -119,15 +120,15 @@ def fuzzy_assert(result, expected):
 
 
 def patch_robot(robot, commands):
-        """
-        Monkeypatching for backwards compatibility when robot used to have
-        commands
-        """
-        def get_commands():
-            return commands
+    """
+    Monkeypatching for backwards compatibility when robot used to have
+    commands
+    """
+    def get_commands():
+        return commands
 
-        def clear_commands():
-            commands.clear()
+    def clear_commands():
+        commands.clear()
 
-        setattr(robot, 'commands', get_commands)
-        setattr(robot, 'clear_commands', clear_commands)
+    setattr(robot, 'commands', get_commands)
+    setattr(robot, 'clear_commands', clear_commands)

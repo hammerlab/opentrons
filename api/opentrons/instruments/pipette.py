@@ -9,6 +9,7 @@ from opentrons.containers.placeable import (
 from opentrons.helpers import helpers
 from opentrons.instruments.instrument import Instrument
 from opentrons.broker import publish
+from opentrons import actions
 
 
 class Pipette(Instrument):
@@ -275,7 +276,7 @@ class Pipette(Instrument):
         return self
 
     @publish.both(
-        name='robot.command',
+        action=actions.aspirate,
         text='Aspirating {volume} uL from {location} at {rate} speed'
     )
     def aspirate(self, volume=None, location=None, rate=1.0):
@@ -361,7 +362,8 @@ class Pipette(Instrument):
         return self
 
     @publish.both(
-        name='robot.command', text='Dispensing {volume} into {location}'
+        action=actions.dispense,
+        text='Dispensing {volume} into {location}'
     )
     def dispense(self,
                  volume=None,

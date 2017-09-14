@@ -1,4 +1,4 @@
-from opentrons.broker import publish, subscribe
+from opentrons.broker import publish, on
 
 
 @publish.both(name='command', text='{arg1} {arg2} {arg3}')
@@ -18,12 +18,11 @@ def B(arg1):
     return None
 
 
-def test_add_listener():
+async def test_add_listener(loop):
     stack = []
     calls = []
 
-    def on_notify(name, event):
-        assert name == 'command'
+    async def on_command(event):
         description = event['text'].format(**event)
 
         if event['$'] == 'before':
@@ -32,11 +31,13 @@ def test_add_listener():
         else:
             stack.pop()
 
-    unsubscribe, = subscribe(['command'], on_notify)
+    unsubscribe = on('command', on_command, loop)
 
     A(0, 1)
     B(2)
     C(3, 4)
+
+    await unsubscribe()
 
     expected = [
         {'level': 1, 'description': '0 1 foo'},
@@ -47,7 +48,6 @@ def test_add_listener():
 
     assert calls == expected
 
-    unsubscribe()
     A(0, 2)
 
     assert calls == expected, 'No calls expected after unsubscribe()'

@@ -1,43 +1,64 @@
 import ast
-import copy
+import asyncio
+import functools
 
+
+from asyncio import Queue
 from opentrons import robot
 from opentrons.robot.robot import Robot
 from datetime import datetime
-
-from opentrons.broker import notify, subscribe
+from contextlib import contextmanager
+from opentrons.broker import emit, on
 
 
 VALID_STATES = set(
     ['loaded', 'running', 'finished', 'stopped', 'paused'])
 
+STATE_CHANGE_EVENT = 'session.state.change'
+
 
 class SessionManager(object):
     def __init__(self, loop=None):
-        self.unsubscribe, self.notifications = \
-            subscribe(['session.state.change'], loop=loop)
+        loop = loop or asyncio.get_event_loop()
+        self.unsubscribe = on(
+            STATE_CHANGE_EVENT,
+            handler=self.on_change,
+            loop=loop)
         self.robot = Robot()
+        self.loop = loop
+        self.snoozed = False
         self.sessions = []
+        self.queue = Queue(loop=loop)
 
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.clear()
-        self.unsubscribe()
+    def __exit__(self, exc_type, exc, tb):
+        self.loop.run_until_complete(self.unsubscribe())
 
-    def clear(self):
-        for session in self.sessions:
-            session.close()
-        self.sessions.clear()
+    @contextmanager
+    def snooze(self):
+        self.snoozed = True
+        try:
+            yield
+        finally:
+            self.snoozed = False
 
-    def create(self, name, text):
-        self.clear()
+    async def on_change(self, payload):
+        if not self.snoozed:
+            await self.queue.put((STATE_CHANGE_EVENT, payload))
 
-        with self.notifications.snooze():
-            self.session = Session(name=name, text=text)
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        return await self.queue.get()
+
+    async def create(self, name, text):
+        with self.snooze():
+            self.session = Session(name=name, loop=self.loop)
+            await self.session.load(text)
             self.sessions.append(self.session)
-        # Can't do it from session's __init__ because notifications are snoozed
         self.session.set_state('loaded')
         return self.session
 
@@ -46,41 +67,28 @@ class SessionManager(object):
 
 
 class Session(object):
-    def __init__(self, name, text):
+    def __init__(self, name, loop=None):
+        loop = loop or asyncio.get_event_loop()
+        self.loop = loop
         self.name = name
-        self.protocol_text = text
-        self.state = None
-        self.unsubscribe, = subscribe(
-            ['robot.command'], self.on_command)
 
-        try:
-            self.refresh()
-        except Exception as e:
-            self.close()
-            raise e
-
-    def on_command(self, name, event):
-        if event['$'] == 'before':
-            self.log_append()
-
-    def close(self):
-        self.unsubscribe()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.close()
-
-    def reset(self):
         self.command_log = {}
         self.errors = []
+        self.commands = []
+        self.state = None
+        self.protocol_text = ""
 
-    def _simulate(self):
+        self.listen_to_commands = functools.partial(
+            on,
+            loop=loop,
+            prefix='robot.command'
+        )
+
+    async def _simulate(self):
         stack = []
         commands = []
 
-        def on_command(name, payload):
+        async def on_command(payload):
             description = payload.get('text', '').format(
                 **payload
             )
@@ -95,29 +103,56 @@ class Session(object):
             else:
                 stack.pop()
 
-        unsubscribe, = subscribe(['robot.command'], on_command)
+        unsubscribe = self.listen_to_commands(handler=on_command)
 
         try:
-            self.run()
+            await self._execute_protocol()
         finally:
-            unsubscribe()
+            await unsubscribe()
 
         return commands
 
-    def refresh(self):
-        self.reset()
-
+    async def load(self, text):
         try:
+            self.protocol_text = text
             tree = ast.parse(self.protocol_text)
             self.protocol = compile(tree, filename=self.name, mode='exec')
-            commands = self._simulate()
+            commands = await self._simulate()
             self.load_commands(commands)
-            self.command_log.clear()
         finally:
             if self.errors:
                 raise Exception(*self.errors)
             self.set_state('loaded')
-        return self
+
+    def _execute_protocol(self):
+        # HACK: hard reset singleton by replacing all of it's attributes
+        # with the one from a newly constructed robot
+        robot.__dict__ = {**Robot().__dict__}
+
+        try:
+            return self.loop.run_in_executor(None, exec, self.protocol, {})
+        except:
+            self.error_append(e)
+            raise e
+
+    async def run(self, devicename):
+        async def on_command(payload):
+            if payload['$'] == 'before':
+                self.log_append()
+
+        self.command_log.clear()
+        self.errors.clear()
+
+        unsubscribe = self.listen_to_commands(handler=on_command)
+        self.set_state('running')
+        robot.connect(devicename)
+
+        try:
+            await self._execute_protocol()
+        finally:
+            robot.disconnect()
+            await unsubscribe()
+            self.set_state('finished')
 
     def stop(self):
         robot.stop()
@@ -132,27 +167,6 @@ class Session(object):
     def resume(self):
         robot.resume()
         self.set_state('running')
-        return self
-
-    def run(self, devicename=None):
-        # HACK: hard reset singleton by replacing all of it's attributes
-        # with the one from a newly constructed robot
-        robot.__dict__ = {**Robot().__dict__}
-        self.reset()
-
-        if devicename is not None:
-            self.set_state('running')
-            robot.connect(devicename)
-
-        try:
-            exec(self.protocol, {})
-        except Exception as e:
-            self.error_append(e)
-            raise e
-        finally:
-            self.set_state('finished')
-            robot.disconnect()
-
         return self
 
     def set_state(self, state):
@@ -195,7 +209,8 @@ class Session(object):
                 for key, subtree in subtrees(commands, level)
             ]
 
-        self.commands = walk(commands)
+        self.commands.clear()
+        self.commands.extend(walk(commands))
 
     def log_append(self):
         self.command_log.update({
@@ -214,5 +229,16 @@ class Session(object):
         )
         self.on_state_changed()
 
+    def _snapshot(self):
+        return {
+            'name': self.name,
+            'state': self.state,
+            'protocol_text': self.protocol_text,
+            'commands': self.commands.copy(),
+            'command_log': self.command_log.copy(),
+            'errors': self.errors.copy()
+        }
+
     def on_state_changed(self):
-        notify('session.state.change', copy.deepcopy(self))
+        snapshot = self._snapshot()
+        emit(STATE_CHANGE_EVENT, snapshot)

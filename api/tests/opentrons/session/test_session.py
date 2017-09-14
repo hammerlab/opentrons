@@ -1,14 +1,16 @@
+import asyncio
+import functools
 import itertools
 import pytest
 
-from datetime import datetime
-from opentrons.broker import notify
+from opentrons import broker
 
+from datetime import datetime
 from opentrons.session import Session
 
 
 async def test_load_from_text(session_manager, protocol):
-    session = session_manager.create(name='<blank>', text=protocol.text)
+    session = await session_manager.create(name='<blank>', text=protocol.text)
     assert session.name == '<blank>'
 
     acc = []
@@ -17,15 +19,15 @@ async def test_load_from_text(session_manager, protocol):
         for command in commands:
             acc.append(command)
             traverse(command['children'])
-    traverse(session.commands)
 
+    traverse(session.commands)
     assert len(acc) == 105
 
 
 async def test_async_notifications(session_manager):
-    notify('session.state.change', {})
+    broker.emit('session.state.change', {})
     # Get async iterator
-    aiter = session_manager.notifications.__aiter__()
+    aiter = session_manager.__aiter__()
     # Then read the first item
     res = await aiter.__anext__()
     # Returns tuple containing message and session
@@ -35,7 +37,7 @@ async def test_async_notifications(session_manager):
 
 async def test_load_protocol_with_error(session_manager):
     with pytest.raises(Exception) as e:
-        session = session_manager.create(name='<blank>', text='blah')
+        session = await session_manager.create(name='<blank>', text='blah')
         assert session is None
 
     args, = e.value.args
@@ -48,43 +50,38 @@ async def test_load_protocol_with_error(session_manager):
 
 
 async def test_load_and_run(session_manager, protocol):
-    session = session_manager.create(name='<blank>', text=protocol.text)
-    assert session_manager.notifications.queue.qsize() == 0
+    session = await session_manager.create(name='<blank>', text=protocol.text)
+    assert session_manager.queue.qsize() == 0
     assert session.command_log == {}
     assert session.state == 'loaded'
-    session.run(devicename='Virtual Smoothie')
+    await session.run(devicename='Virtual Smoothie')
     assert len(session.command_log) == 105
 
     res = []
-    index = 0
-    async for notification in session_manager.notifications:
-        assert isinstance(notification, tuple), "notification is a tuple"
-        name, s = notification
-        if (name == 'session.state.change'):
-            index += 1  # Command log in sync with add-command events emitted
-        assert isinstance(s, Session), "second element is Session"
-        if name == 'session.state.change':
-            res.append(s.state)
-            if s.state == 'finished':
-                break
+    async for notification in session_manager:
+        name, payload = notification
+        state = payload['state']
+        res.append(state)
+        if state == 'finished':
+            break
 
     assert [key for key, _ in itertools.groupby(res)] == \
         ['loaded', 'running', 'finished'], \
         'Run should emit state change to "running" and then to "finished"'
-    assert session_manager.notifications.queue.qsize() == 0, 'Notification should be empty after receiving "finished" state change event'  # noqa
+    assert session_manager.queue.qsize() == 0, 'Notification should be empty after receiving "finished" state change event'  # noqa
 
-    session.run(devicename='Virtual Smoothie')
+    await session.run(devicename='Virtual Smoothie')
     assert len(session.command_log) == 105, \
         "Clears command log on the next run"
 
 
 @pytest.fixture
-def run_session():
-    with Session('dino', 'from opentrons import robot') as s:
-        yield s
+def run_session(loop):
+    return Session('dino', loop)
 
 
-def test_init(run_session):
+async def test_init(run_session):
+    await run_session.load('from opentrons import robot')
     assert run_session.state == 'loaded'
     assert run_session.name == 'dino'
 
@@ -99,7 +96,7 @@ def test_set_state(run_session):
         run_session.set_state('impossible-state')
 
 
-def test_set_commands(run_session):
+async def test_set_commands(run_session):
     run_session.load_commands([
         {'level': 0, 'description': 'A', 'id': 0},
         {'level': 0, 'description': 'B', 'id': 1},

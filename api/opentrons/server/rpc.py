@@ -80,12 +80,9 @@ class Server(object):
             client.send_str(json.dumps(payload))
 
     async def monitor_events(self, instance):
-        async for event in instance.notifications:
+        async for event in instance:
             try:
-                # Apply notification_max_depth to control object tree depth
-                # during serialization to avoid flooding comms
-                data = self.call_and_serialize(
-                    lambda: event)
+                data = self.call_and_serialize(lambda: event)
                 self.send(
                     {
                         '$': {'type': NOTIFICATION_MESSAGE},

@@ -21,7 +21,7 @@ publish:
 	cd scripts && publish.sh && doc-deploy.sh
 
 dev:
-	python opentrons/server/main.py
+	ENABLE_VIRTUAL_SMOOTHIE=true; python opentrons/server/main.py
 
 exe: dist/opentrons-api-server
 
