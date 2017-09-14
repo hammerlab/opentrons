@@ -1,5 +1,4 @@
 import asyncio
-
 from concurrent import futures
 
 listeners = {}
@@ -8,7 +7,7 @@ listeners = {}
 def on(prefix, handler, loop=None):
     loop = loop or asyncio.get_event_loop()
 
-    assert asyncio.iscoroutinefunction(handler), 'Handler must be a coroutine'
+    assert callable(handler) or 'Handler must be a callable'
 
     listener = (
         prefix,
@@ -34,9 +33,12 @@ def emit(name, payload):
         if not name.startswith(prefix):
             continue
 
-        future = asyncio.run_coroutine_threadsafe(handler(payload), loop)
-        task = loop.run_in_executor(
-            None,
-            future.result
-        )
-        tasks.append(task)
+        if asyncio.iscoroutinefunction(handler):
+            future = asyncio.run_coroutine_threadsafe(handler(payload), loop)
+            task = loop.run_in_executor(
+                None,
+                future.result
+            )
+            tasks.append(task)
+        else:
+            handler(payload)

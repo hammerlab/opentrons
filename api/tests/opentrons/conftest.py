@@ -1,6 +1,6 @@
 # Uncomment to enable logging during tests
-# import logging
-# from logging.config import dictConfig
+import logging
+from logging.config import dictConfig
 
 import asyncio
 import pytest
@@ -13,32 +13,32 @@ from opentrons.server import rpc
 from uuid import uuid4 as uuid
 
 # Uncomment to enable logging during tests
-# logging_config = dict(
-#     version=1,
-#     formatters={
-#         'basic': {
-#             'format':
-#             '[Line %(lineno)s] %(message)s'
-#         }
-#     },
-#     handlers={
-#         'debug': {
-#             'class': 'logging.StreamHandler',
-#             'formatter': 'basic',
-#         }
-#     },
-#     loggers={
-#         '__main__': {
-#             'handlers': ['debug'],
-#             'level': logging.DEBUG
-#         },
-#         'opentrons.server': {
-#             'handlers': ['debug'],
-#             'level': logging.DEBUG
-#         },
-#     }
-# )
-# dictConfig(logging_config)
+logging_config = dict(
+    version=1,
+    formatters={
+        'basic': {
+            'format':
+            '[Line %(lineno)s] %(message)s'
+        }
+    },
+    handlers={
+        'debug': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'basic',
+        }
+    },
+    loggers={
+        '__main__': {
+            'handlers': ['debug'],
+            'level': logging.DEBUG
+        },
+        'opentrons.server': {
+            'handlers': ['debug'],
+            'level': logging.DEBUG
+        },
+    }
+)
+dictConfig(logging_config)
 
 Session = namedtuple(
     'Session',

@@ -16,7 +16,7 @@ async def test_notifications(session, session_manager, protocol, root):
 
     await session.socket.receive_json()  # Skip ack
     res = await session.socket.receive_json()
-
+    print(res)
     assert res['data'][1]['v']['state'] == 'loaded'
 
     res = await session.socket.receive_json()

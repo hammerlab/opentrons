@@ -25,14 +25,20 @@ class Foo(object):
         raise Exception('Kaboom!')
 
 
-class Notifications(object):
-    def __init__(self, loop):
+class TickTock(object):
+    def __init__(self):
+        self.value = 0
+
+    # Called by test fixture to set loop
+    def init(self, loop):
         self.loop = loop
         self.queue = asyncio.Queue(loop=loop)
 
-    def put(self, value):
-        asyncio.run_coroutine_threadsafe(
-            self.queue.put(value), self.loop)
+    async def start(self):
+        for i in range(5):
+            await self.queue.put(i)
+            time.sleep(0.1)
+        return "Done!"
 
     def __aiter__(self):
         return self
@@ -46,28 +52,13 @@ class Notifications(object):
         return res
 
 
-class TickTock(object):
-    def __init__(self):
-        self.value = 0
-
-    # Called by test fixture to set loop
-    def init(self, loop):
-        self.notifications = Notifications(loop)
-
-    def start(self):
-        for i in range(5):
-            self.notifications.put(i)
-            time.sleep(0.1)
-        return "Done!"
-
-
 def type_id(instance):
     return id(type(instance))
 
 
 @pytest.mark.parametrize('root', [Foo(0)])
 async def test_call(session, root):
-    res = session.server.call_and_serialize(lambda: root)
+    res = session.server.serialize_and_store(root)
     assert res == {'v': {'value': 0}, 't': type_id(root), 'i': id(root)}
 
 
@@ -79,7 +70,7 @@ async def test_init(session, root):
             't': type_id(root),
             'v': {'value': 0}
         },
-        'type': session.server.call_and_serialize(lambda: type(root)),
+        'type': session.server.serialize_and_store(type(root)),
         '$': {'type': rpc.CONTROL_MESSAGE}}
 
     res = await session.socket.receive_json()

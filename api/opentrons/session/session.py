@@ -3,32 +3,29 @@ import asyncio
 import functools
 
 
-from asyncio import Queue
 from opentrons import robot
 from opentrons.robot.robot import Robot
 from datetime import datetime
 from contextlib import contextmanager
 from opentrons.broker import emit, on
-
+from opentrons.actions import types
 
 VALID_STATES = set(
     ['loaded', 'running', 'finished', 'stopped', 'paused'])
-
-STATE_CHANGE_EVENT = 'session.state.change'
 
 
 class SessionManager(object):
     def __init__(self, loop=None):
         loop = loop or asyncio.get_event_loop()
         self.unsubscribe = on(
-            STATE_CHANGE_EVENT,
+            types.STATE_CHANGE,
             handler=self.on_change,
             loop=loop)
         self.robot = Robot()
         self.loop = loop
         self.snoozed = False
         self.sessions = []
-        self.queue = Queue(loop=loop)
+        self.queue = asyncio.Queue(loop=loop)
 
     def __enter__(self):
         return self
@@ -46,7 +43,7 @@ class SessionManager(object):
 
     async def on_change(self, payload):
         if not self.snoozed:
-            await self.queue.put((STATE_CHANGE_EVENT, payload))
+            await self.queue.put((types.STATE_CHANGE, payload))
 
     def __aiter__(self):
         return self
@@ -81,13 +78,10 @@ class Session(object):
         self.listen_to_commands = functools.partial(
             on,
             loop=loop,
-            prefix='robot.command'
+            prefix=types.ROBOT_COMMAND
         )
 
     async def _simulate(self):
-        stack = []
-        commands = []
-
         async def on_command(payload):
             description = payload.get('text', '').format(
                 **payload
@@ -103,6 +97,8 @@ class Session(object):
             else:
                 stack.pop()
 
+        stack = []
+        commands = []
         unsubscribe = self.listen_to_commands(handler=on_command)
 
         try:
@@ -124,17 +120,6 @@ class Session(object):
                 raise Exception(*self.errors)
             self.set_state('loaded')
 
-    def _execute_protocol(self):
-        # HACK: hard reset singleton by replacing all of it's attributes
-        # with the one from a newly constructed robot
-        robot.__dict__ = {**Robot().__dict__}
-
-        try:
-            return self.loop.run_in_executor(None, exec, self.protocol, {})
-        except:
-            self.error_append(e)
-            raise e
-
     async def run(self, devicename):
         async def on_command(payload):
             if payload['$'] == 'before':
@@ -153,6 +138,18 @@ class Session(object):
             robot.disconnect()
             await unsubscribe()
             self.set_state('finished')
+
+    async def _execute_protocol(self):
+        # HACK: hard reset singleton by replacing all of it's attributes
+        # with the one from a newly constructed robot
+        robot.__dict__ = {**Robot().__dict__}
+
+        try:
+            res = await self.loop.run_in_executor(
+                None, exec, self.protocol, {})
+            return res
+        except Exception as e:
+            self.error_append(e)
 
     def stop(self):
         robot.stop()
@@ -241,4 +238,4 @@ class Session(object):
 
     def on_state_changed(self):
         snapshot = self._snapshot()
-        emit(STATE_CHANGE_EVENT, snapshot)
+        emit(types.STATE_CHANGE, snapshot)

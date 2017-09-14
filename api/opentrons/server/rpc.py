@@ -82,7 +82,7 @@ class Server(object):
     async def monitor_events(self, instance):
         async for event in instance:
             try:
-                data = self.call_and_serialize(lambda: event)
+                data = self.serialize_and_store(event)
                 self.send(
                     {
                         '$': {'type': NOTIFICATION_MESSAGE},
@@ -106,8 +106,8 @@ class Server(object):
 
         self.send({
             '$': {'type': CONTROL_MESSAGE},
-            'root': self.call_and_serialize(lambda: self.root),
-            'type': self.call_and_serialize(lambda: type(self.root))
+            'root': self.serialize_and_store(self.root),
+            'type': self.serialize_and_store(type(self.root))
         })
 
         try:
@@ -210,28 +210,33 @@ class Server(object):
         except Exception as e:
             log.error('While processing request: {0}'.format(str(e)))
 
-    def call_and_serialize(self, func, max_depth=0):
-        call_result = func()
+    def serialize_and_store(self, obj, max_depth=0):
         serialized, refs = serialize.get_object_tree(
-            call_result, max_depth=max_depth)
+            obj, max_depth=max_depth)
         self.objects.update(refs)
         return serialized
 
     async def make_call(self, func, token):
         response = {'$': {'type': CALL_RESULT_MESSAGE, 'token': token}}
         try:
-            call_result = await self.loop.run_in_executor(
-                self.executor, self.call_and_serialize, func)
+            # NOTE: func is the result of functools.partial and will not show
+            # up as a coroutine, hence, we are inspecting the function func is
+            # calling
+            res = \
+                await func() \
+                if asyncio.iscoroutinefunction(func.func) else \
+                await self.loop.run_in_executor(self.executor, func)
+            payload = self.serialize_and_store(res)
             response['$']['status'] = 'success'
         except Exception as e:
             log.warning(
                 'Exception while dispatching a method call: {0}'
                 .format(traceback.format_exc()))
             response['$']['status'] = 'error'
-            call_result = '{0}: {1}'.format(e.__class__.__name__, str(e))
+            payload = '{0}: {1}'.format(e.__class__.__name__, str(e))
         finally:
-            log.info('Call result: {0}'.format(call_result))
-            response['data'] = call_result
+            log.info('Call result: {0}'.format(payload))
+            response['data'] = payload
         return response
 
     def send_error(self, text, token):
