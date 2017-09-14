@@ -11,6 +11,7 @@ const {BundleAnalyzerPlugin} = require('webpack-bundle-analyzer')
 const {description, author} = require('./package.json')
 const namedRules = require('./webpack/rules')
 const devServerConfig = require('./webpack/dev-server')
+const gtmConfig = require('./ui/analytics/gtm-config')
 
 const DEV = process.env.NODE_ENV !== 'production'
 const ANALYZER = process.env.ANALYZER === 'true'
@@ -55,7 +56,8 @@ const plugins = [
     title: 'OT App',
     template: './ui/index.hbs',
     description,
-    author
+    author,
+    gtmConfig
   }),
 
   new ScriptExtHtmlWebpackPlugin({
