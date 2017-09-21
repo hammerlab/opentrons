@@ -60,7 +60,7 @@ class Session(object):
     def __init__(self, name, text):
         self.name = name
         self.protocol_text = text
-        self.protocol = None
+        self._protocol = None
         self.state = None
         self._unsubscribe = subscribe(types.COMMAND, self.on_command)
         self.commands = []
@@ -124,7 +124,7 @@ class Session(object):
 
         try:
             parsed = ast.parse(self.protocol_text)
-            self.protocol = compile(parsed, filename=self.name, mode='exec')
+            self._protocol = compile(parsed, filename=self.name, mode='exec')
             self.commands = tree.from_list(self._simulate())
             self.command_log.clear()
         finally:
@@ -159,7 +159,7 @@ class Session(object):
             robot.connect(devicename)
 
         try:
-            exec(self.protocol, {})
+            exec(self._protocol, {})
         except Exception as e:
             self.error_append(e)
             raise e

@@ -116,3 +116,11 @@ def fuzzy_assert(result, expected):
         assert re.compile(
             exp.lower()).match(res.lower()), "{} didn't match {}" \
             .format(res, exp)
+
+
+@pytest.fixture
+def connect(session, test_client):
+    async def _connect():
+        client = await test_client(session.server.app)
+        return await client.ws_connect('/')
+    return _connect
