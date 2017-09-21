@@ -101,11 +101,10 @@ class Session(object):
             )
 
             if message['$'] == 'before':
-                res.append(
-                    {
-                        'level': len(stack),
-                        'description': description,
-                        'id': len(res)})
+                res.append({
+                    'level': len(stack),
+                    'description': description,
+                    'id': len(res)})
                 stack.append(message)
             else:
                 stack.pop()
