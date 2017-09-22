@@ -1,8 +1,10 @@
 import React from 'react'
 // import PropTypes from 'prop-types'
+import Labware from './Labware'
 import styles from './Deck.css'
 
 export default function DeckMap (props) {
+  // leaving this mock store here in anticipation of deckmap becoming container
   const deck = {
     1: {
       labware: {
@@ -18,7 +20,7 @@ export default function DeckMap (props) {
       labware: {
         name: 'tuberack_75',
         slot: 'C1',
-        type: 'tube-rack-.75ml'
+        type: 'tube-rack-75ml'
       }
     },
     4: {
@@ -54,8 +56,16 @@ export default function DeckMap (props) {
       let slotStyle = {
         gridArea: `slot-${i}`
       }
+      let containerProps = {
+        style: {gridArea: `slot-${i}`},
+        container: slot.labware
+      }
       slot.labware
-      ? deckMap.push(<div id={i} style={slotStyle} className={styles.slot}>{slot.labware.name}</div>)
+      ? deckMap.push(
+        <div id={i} style={slotStyle} className={styles.slot} >
+          <Labware {...containerProps} />
+        </div>
+      )
       : deckMap.push(<div id={i} style={slotStyle} className={styles.empty_slot}>{i}</div>)
     }
     return <div className={styles.deck}> {deckMap} </div>

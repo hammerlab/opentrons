@@ -57,6 +57,8 @@ export default function App (props) {
   //     </main>
   //   </div>
   // )
+
+  // Temp workaround to render deck by default, definitely time to think about containers and task screens
   return (
     <div className={grid.wrapper}>
       <Nav />
