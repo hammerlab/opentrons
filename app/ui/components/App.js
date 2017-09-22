@@ -6,6 +6,7 @@ import Nav from '../containers/Nav'
 import Button from './Button'
 import RunControl from './RunControl'
 import RunLog from './RunLog'
+import DeckMap from './DeckMap'
 import grid from './Grid.css'
 
 export default function App (props) {
@@ -59,11 +60,11 @@ export default function App (props) {
   return (
     <div className={grid.wrapper}>
       <Nav />
-      <main className={grid.task}>
+      <main className={grid.task_deck}>
         <header className={grid.header}>
           {runButton}
         </header>
-
+        <DeckMap />
       </main>
     </div>
   )

@@ -39,6 +39,15 @@
     'main-task' 468px;
 }
 
+.task_deck {
+  grid-area: main;
+  display: grid;
+  flex: 1 1;
+  grid-template:
+    'header' 75px
+    'main-task' auto;
+}
+
 .header {
   background-color: grey;
   display: grid;
