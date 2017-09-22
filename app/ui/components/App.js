@@ -44,6 +44,18 @@ export default function App (props) {
     runLog = <RunLog style={grid.maintask} {...props} />
   }
 
+  // return (
+  //   <div className={grid.wrapper}>
+  //     <Nav />
+  //     <main className={grid.task}>
+  //       <header className={grid.header}>
+  //         {runButton}
+  //       </header>
+  //       {runControl}
+  //       {runLog}
+  //     </main>
+  //   </div>
+  // )
   return (
     <div className={grid.wrapper}>
       <Nav />
@@ -51,8 +63,7 @@ export default function App (props) {
         <header className={grid.header}>
           {runButton}
         </header>
-        {runControl}
-        {runLog}
+
       </main>
     </div>
   )
