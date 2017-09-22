@@ -51,18 +51,21 @@ export default function DeckMap (props) {
     let deckMap = []
     for (let i in deck) {
       let slot = deck[i]
+      let slotStyle = {
+        gridArea: `slot-${i}`
+      }
       slot.labware
-      ? deckMap.push(<div id={i} className={styles[`slot-${i}`]}>{slot.labware.name}</div>)
-      : deckMap.push(<div id={i} className={styles[`slot-${i}`]}>{i}</div>)
+      ? deckMap.push(<div id={i} style={slotStyle} className={styles.slot}>{slot.labware.name}</div>)
+      : deckMap.push(<div id={i} style={slotStyle} className={styles.empty_slot}>{i}</div>)
     }
-    return deckMap.reverse()
+    return <div className={styles.deck}> {deckMap} </div>
   }
 
-  let test = makeDeck()
+  let deckLayout = makeDeck()
 
   return (
     <div className={styles.deck_wrapper}>
-      {test}
+      {deckLayout}
     </div>
   )
 }

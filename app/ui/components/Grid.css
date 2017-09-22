@@ -43,12 +43,16 @@
   grid-area: main;
   display: grid;
   flex: 1 1;
+  grid-gap: 1rem;
+  grid-template-columns: 500px auto;
   grid-template:
-    'header' 75px
-    'main-task' auto;
+    'header header' 75px
+    'deck .' 468px
+    'temp temp' auto;
 }
 
 .header {
+  grid-area: header;
   background-color: grey;
   display: grid;
   grid-template-columns: auto auto auto 10rem;
