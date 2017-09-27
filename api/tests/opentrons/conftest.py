@@ -158,7 +158,7 @@ def connect(session, test_client):
         return await client.ws_connect('/')
     return _connect
 
-  
+
 def setup_testing_env():
     database.change_database(MAIN_TESTER_DB)
 
